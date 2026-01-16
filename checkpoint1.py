@@ -35,8 +35,40 @@ args = parser.parse_args()
 
 #function to calculate energy from nearest neighbours
 #this function should handle the periodic boundary conditions
-def energy(coord, J=1):
-    pass
+def energy(grid, coord, J=1):
+    """
+    Function which calculates energy change in flipping a spin at a given coordinate in Ising model 
+    
+    param grid: The current state of the Ising grid
+    param coord: The coordinate of the spin we are going to flip
+    param J: Coupling constant 
+    """
+
+    #get grid dimensions
+    Lx=len(grid)
+    Ly=len(grid[0])
+
+    #extract coordinate
+    xcoord=int(coord[0])
+    ycoord=int(coord[1])
+
+    print(xcoord, ycoord)
+
+    #get spin at site
+    spin=grid[xcoord][ycoord]
+
+    #Get neighboring spins with periodic BC
+    #Wrap indices using modulo operator
+    n1 = grid[(xcoord - 1) % Lx][ycoord]
+    n2 = grid[(xcoord + 1) % Lx][ycoord]
+    n3 = grid[xcoord][(ycoord + 1) % Ly]
+    n4 = grid[xcoord][(ycoord - 1) % Ly]
+    
+    #calculate current energy
+    eChange = 2 * J * spin * (n1 + n2 + n3 + n4)
+    
+    return eChange
+    
 
 
 #initialise grid
@@ -51,11 +83,16 @@ elif args.dynamics.lower()=='glauber':
 
     #pick a random site
     randCoord=np.random.choice(np.linspace(0, 49, 50), size=2)
+    print(randCoord, 'randCoord')
     
     #access value on the grid
-    print(grid[int(randCoord[0])][int(randCoord[1])], 'grid randcoord')
+    #print(grid[int(randCoord[0])][int(randCoord[1])], 'grid randcoord')
+    eChange = energy(grid, randCoord)
+    
+    #grid[int(randCoord[0])][int(randCoord[1])]=10 #for viewing and debugging
 
 #show grid
-# plt.imshow(grid)
-# plt.grid(False)
-# plt.show()
+plt.imshow(grid)
+plt.grid(False)
+plt.colorbar()
+plt.show()
