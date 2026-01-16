@@ -1,6 +1,8 @@
 #import essentials
 import numpy as np 
 import matplotlib.pyplot as plt 
+import matplotlib
+matplotlib.use('TkAgg')
 import scipy 
 import scipy.stats as stats
 import random 
@@ -52,8 +54,6 @@ def energy(grid, coord, J=1):
     xcoord=int(coord[0])
     ycoord=int(coord[1])
 
-    print(xcoord, ycoord)
-
     #get spin at site
     spin=grid[xcoord][ycoord]
 
@@ -71,28 +71,79 @@ def energy(grid, coord, J=1):
     
 
 
-#initialise grid
+#initialise grid, number of timesteps to simulate for and how often to update plot
 grid=np.random.choice([-1, 1], size=(args.n, args.n))
+updateInterval = 200  # Update plot every 20 Monte Carlo step
+totalSteps = 100000000
+    
 
 #choosing dynamics 
 if args.dynamics.lower()=='kawasaki':
     #do kawasaki dynamics
     print('kawasaki')
-elif args.dynamics.lower()=='glauber':
-    print('Using Glauber Dynamics')
 
-    #pick a random site
-    randCoord=np.random.choice(np.linspace(0, 49, 50), size=2)
-    print(randCoord, 'randCoord')
+
+elif args.dynamics.lower() == 'glauber':
+    print('Using Glauber Dynamics')
     
-    #access value on the grid
-    #print(grid[int(randCoord[0])][int(randCoord[1])], 'grid randcoord')
-    eChange = energy(grid, randCoord)
+    plt.ion()
+    
+    # Create initial figure with performance optimizations
+    fig, ax = plt.subplots(figsize=(7, 6))
+    
+    # Use faster rendering options
+    im = ax.imshow(grid, vmin=-1, vmax=1, interpolation='none')  # 'none' is fastest for pixel data
+    plt.colorbar(im, ax=ax)
+    ax.set_title('Glauber Dynamics')
+    plt.grid(False)
+    #turn off ticks
+    plt.xticks([])
+    plt.yticks([])
+
+    
+    # Disable autoscaling for better performance
+    ax.set_autoscale_on(False)
+    
+    # Initial draw
+    fig.canvas.draw()
+   
+    for i in range(totalSteps):
+        #Pick random site
+        x, y = random.randint(0, 49), random.randint(0, 49)
+        
+        #Calculate energy change
+        eChange = energy(grid, [x, y])
+        
+        #Glauber dynamics
+        if eChange < 0:
+            grid[x][y] *= -1
+        elif random.random() < np.exp(-eChange / args.thermalEnergy):
+            grid[x][y] *= -1
+        
+        #Update plot periodically (not every step)
+        if i % updateInterval == 0 or i == totalSteps - 1:
+            #Update the data
+            im.set_data(grid)  #Use set_data instead of set_array (slightly faster)
+            
+            #Use more efficient drawing methods
+            fig.canvas.draw_idle()  #More efficient than plt.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.001)  
+    
+    #Final update
+    fig.canvas.draw()
+    
+    plt.ioff()
+    plt.show()
+        
+       
+
+    
     
     #grid[int(randCoord[0])][int(randCoord[1])]=10 #for viewing and debugging
 
 #show grid
-plt.imshow(grid)
-plt.grid(False)
-plt.colorbar()
-plt.show()
+# plt.imshow(grid)
+# plt.grid(False)
+# plt.colorbar()
+# plt.show()
