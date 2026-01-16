@@ -19,60 +19,43 @@ parser = argparse.ArgumentParser(
 )
 
 #passing arguments
-parser.add_argument('bounds', nargs='+', type=float,
-                   help='Integration bounds as: x1 x2 y1 y2 [z1 z2 ...]')
+# parser.add_argument('bounds', nargs='+', type=float,
+#                    help='Integration bounds as: x1 x2 y1 y2 [z1 z2 ...]')
 parser.add_argument('-v', '--verbose', action='store_true',
                    help='Enable verbose output')
-parser.add_argument('-n', '--npoints', type=int, default=1000,
+parser.add_argument('-n', '--n', type=int, default=1000,
                    help='Number of Monte Carlo points (default: 1000)')
+parser.add_argument('-e', '--thermalEnergy', type=float, default=1, 
+                    help='Thermal energy of the system')
+parser.add_argument('-d', '--dynamics', type=str, default='Glauber',
+                    help='The type of dynamics you want to run the Ising simulation with')
 
 args = parser.parse_args()
 
-# Correct way to access the bounds argument
-print(f"Testing arg is {args.bounds}")
+
+#function to calculate energy from nearest neighbours
+#this function should handle the periodic boundary conditions
+def energy(coord, J=1):
+    pass
 
 
-#need to initialise lattice
-#need to generate random numbers 
-#need to initialise energies
-#functions for all of the above
+#initialise grid
+grid=np.random.choice([-1, 1], size=(args.n, args.n))
 
-#function for monte carlo integration 
-def monteCarloIntegrator(function, bounds, nPoints=1000):
-    """
-    Monte Carlo Integration over specified bounds
+#choosing dynamics 
+if args.dynamics.lower()=='kawasaki':
+    #do kawasaki dynamics
+    print('kawasaki')
+elif args.dynamics.lower()=='glauber':
+    print('Using Glauber Dynamics')
+
+    #pick a random site
+    randCoord=np.random.choice(np.linspace(0, 49, 50), size=2)
     
-    Parameters:
-    -----
-    function : callable 
-        Function to integrate via monte carlo
-    bounds : list of arrays which define the bounds, can be 2D or 3D
-        [(x_min, x_max), (y_min, y_max), ...]
-    n : integer
-        Number of samples 
-    """
+    #access value on the grid
+    print(grid[int(randCoord[0])][int(randCoord[1])], 'grid randcoord')
 
-
-    #initialise I=0
-    I=0
-
-    for i in range(nPoints):
-        #need to generate a random point based on bounds passed in
-        #spent a lot of time working out argsparse
-        pass
-
-
-#function
-def function(x, y, z=0):
-    return x**2+y**2
-
-
-
-#------ MAIN ------
-
-monteCarloIntegrator(function, args.bounds, nPoints=10)
-
-
-
-
-
+#show grid
+# plt.imshow(grid)
+# plt.grid(False)
+# plt.show()
