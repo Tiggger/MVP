@@ -170,7 +170,6 @@ if args.dynamics.lower() == 'kawasaki':
     plt.ioff()
     plt.show()
 
-
 elif args.dynamics.lower() == 'glauber':
     print('Using Glauber Dynamics')
     
