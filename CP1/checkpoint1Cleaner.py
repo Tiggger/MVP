@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+from numba import njit
 
 # ------------------------------
 # Helper functions
@@ -25,7 +26,7 @@ import argparse
 parser = argparse.ArgumentParser(
     prog='ProgramName',
     description='Code for Checkpoint 1 of MVP',
-    epilog='Not sure what to write in here yet.'
+    epilog='Written by John Whitfield'
 )
 
 #passing arguments
@@ -35,12 +36,14 @@ parser.add_argument('-v', '--verbose', action='store_true',
                    help='Enable verbose output')
 parser.add_argument('-n', '--n', type=int, default=50,
                    help='Number of Monte Carlo points (default: 1000)')
-parser.add_argument('-e', '--thermalEnergy', type=float, default=1, 
+parser.add_argument('-t', '--thermalEnergy', type=float, default=1, 
                     help='Thermal energy of the system')
 parser.add_argument('-d', '--dynamics', type=str, default='Glauber',
                     help='The type of dynamics you want to run the Ising simulation with')
 parser.add_argument('-c', '--couplingConstant', type=float, default='1',
                     help='The value of the coupling constant')
+parser.add_argument('-g', '--graphics', type=float, default='0',
+                    help='Graphics modee, 0 for off, 1 for on')
 
 args = parser.parse_args()
 
@@ -78,7 +81,6 @@ def energyChange(grid, coord, J=1):
     eChange = 2 * J * spin * (n1 + n2 + n3 + n4)
     
     return eChange
-
 
 def nnSum(x, y, grid):
     """Sum of nearest neighbours with periodic boundaries."""
@@ -138,7 +140,7 @@ warmUpSweeps=100
 warmUpComplete=False
 
 measurementCounter=0
-numMeasurements=10 #1000
+numMeasurements=1000 #1000
 
 totalSteps = 10_000_000_000
 J = args.couplingConstant
@@ -191,66 +193,82 @@ if args.dynamics.lower() == 'kawasaki':
 
 elif args.dynamics.lower() == 'glauber':
     print("Using Glauber Dynamics")
-    fig, ax, im = init_plot(grid, "Glauber Dynamics")
 
-    tempM=[]
-    
-    #will need to add loop above this that loops through np.linspace(1, 3, 20), but add later when happy this works
-    for step in range(totalSteps):
-        # Pick a random site
-        x, y = random.randint(0, args.n-1), random.randint(0, args.n-1)
-        s = grid[x, y]
-        S = nnSum(x, y, grid)
-        
-        # ΔE if spin flips
-        deltaE = 2 * J * s * S
-        
-        if metropolis_accept(deltaE, T):
-            grid[x, y] *= -1
-        
-        if step % sweep == 0 or step == totalSteps - 1:
-            #update visuals
-            update_plot(im, fig, grid)
+    if args.graphics == 1:
+        fig, ax, im = init_plot(grid, "Glauber Dynamics")
 
-            #keep track of the sweeps
-            sweepCounter+=1
+    temps=np.linspace(1, 3, 20) #need to change this to 20
+    chis=[]
 
-            #if warm up complete
-            if sweepCounter == warmUpSweeps:
-                print('Warm up complete')
-                warmUpComplete=True
+    for t in temps:
+        print(f'Simulating T={t}')
+        grid = np.random.choice([-1, 1], size=(args.n, args.n))
 
-            #if warm up complete and sweep is divisible by 10
-            if warmUpComplete and sweepCounter % 10 == 0:
-                print('Taking measurement')
-                #measure M
-                M=np.sum(grid)
-                tempM.append(M)
-
-                measurementCounter+=1
+        tempM=[]
+        warmUpComplete=False
+        sweepCounter=0
+                
+        for step in range(totalSteps):
+            # Pick a random site
+            x, y = random.randint(0, args.n-1), random.randint(0, args.n-1)
+            s = grid[x, y]
+            S = nnSum(x, y, grid)
             
-            #for testing
-            print(f"Sweep: {sweepCounter}")
-        
-        #if 10000 sweeps have passed, we have finished with this temperature
-        
-        if measurementCounter >= numMeasurements:
-            print('Finished taking susceptability measurements')
+            # ΔE if spin flips
+            deltaE = 2 * J * s * S
             
-            #calculate susceptibility
-            M_arr = np.array(tempM)
+            if metropolis_accept(deltaE, T):
+                grid[x, y] *= -1
+            
+            #if we have swept then
+            if step % sweep == 0 or step == totalSteps - 1:
+                #update visuals
+                if args.graphics==1:
+                    update_plot(im, fig, grid)
 
-            chi = (1 / (args.n**2 * args.thermalEnergy)) * (np.mean(M_arr**2) - np.mean(M_arr)**2)
+                #keep track of the sweeps
+                sweepCounter+=1
+
+                #if warm up complete
+                if sweepCounter == warmUpSweeps:
+                    print('Warm up complete')
+                    warmUpComplete=True
+
+                #if warm up complete and sweep is divisible by 10 and we are in the measurement game mode
+                if warmUpComplete and sweepCounter % 10 == 0:
+                    print('Taking measurement')
+                    #measure M
+                    M=np.sum(grid)
+                    tempM.append(M)
+
+                    if len(tempM) >= numMeasurements:
+                        break
+                
+                #for testing
+                print(f"Sweep: {sweepCounter}")
+
+        M_arr = np.array(tempM)
+
+        chi = (1 / (args.n**2 * T)) * (np.mean(M_arr**2) - np.mean(M_arr)**2)
+        chis.append(chi)
             
-            break
-    
-print(chi)
+        
+        
+print(temps, chis)
+
+
             
         
 
 # ------------------------------
-# Finalize
+# Finalise
 # ------------------------------
 
-plt.ioff()
+if args.graphics==1:
+    plt.ioff()
+    plt.close('all')   
+plt.figure()
+plt.plot(temps, chis, 'o-')
+plt.xlabel(r"$k_B T$")
+plt.ylabel(r"$\chi$")
 plt.show()
