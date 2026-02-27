@@ -54,10 +54,15 @@ args = parser.parse_args()
 
 
 #Plotting functions
-def init_plot(grid, title='Ising Dynamics'):
+def init_plot(grid, title='Ising Dynamics', show_populations=False):
     """Initialize interactive plot."""
     plt.ion()
-    fig, ax = plt.subplots(figsize=(7,6))
+    if show_populations:
+        fig, (ax, ax_pop) = plt.subplots(1, 2, figsize=(12, 6))
+    else:
+        fig, ax = plt.subplots(figsize=(7,6))
+        ax_pop = None
+
     cmap = ListedColormap(["#4daf4a", "#e41a1c", "#377eb8"])  # S, I, R
     norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
     im = ax.imshow(grid, cmap=cmap, norm=norm, interpolation='none')
@@ -69,12 +74,55 @@ def init_plot(grid, title='Ising Dynamics'):
     cbar = fig.colorbar(im, ax=ax, ticks=[-1, 0, 1], fraction=0.046, pad=0.04)
     cbar.ax.set_yticklabels(["S", "I", "R"])
     cbar.set_label("State")
-    fig.canvas.draw()
-    return fig, ax, im
 
-def update_plot(im, fig, grid):
+    lines = None
+    histories = None
+    if ax_pop is not None:
+        s_count = np.count_nonzero(grid == -1)
+        i_count = np.count_nonzero(grid == 0)
+        r_count = np.count_nonzero(grid == 1)
+        histories = {
+            "sweeps": [0],
+            "S": [s_count],
+            "I": [i_count],
+            "R": [r_count],
+        }
+        line_s, = ax_pop.plot(histories["sweeps"], histories["S"], color="#4daf4a", lw=2, label="S")
+        line_i, = ax_pop.plot(histories["sweeps"], histories["I"], color="#e41a1c", lw=2, label="I")
+        line_r, = ax_pop.plot(histories["sweeps"], histories["R"], color="#377eb8", lw=2, label="R")
+        lines = {"S": line_s, "I": line_i, "R": line_r}
+
+        ax_pop.set_title("Population vs Sweep")
+        ax_pop.set_xlabel("Sweep")
+        ax_pop.set_ylabel("Count")
+        ax_pop.set_xlim(0, 10)
+        ax_pop.set_ylim(0, grid.size)
+        ax_pop.legend(frameon=False)
+
+    fig.canvas.draw()
+    return fig, ax, im, ax_pop, lines, histories
+
+def update_plot(im, fig, grid, sweep_count=None, ax_pop=None, lines=None, histories=None):
     """Update the figure with the current grid."""
     im.set_data(grid)
+
+    if ax_pop is not None and lines is not None and histories is not None and sweep_count is not None:
+        s_count = np.count_nonzero(grid == -1)
+        i_count = np.count_nonzero(grid == 0)
+        r_count = np.count_nonzero(grid == 1)
+
+        histories["sweeps"].append(sweep_count)
+        histories["S"].append(s_count)
+        histories["I"].append(i_count)
+        histories["R"].append(r_count)
+
+        lines["S"].set_data(histories["sweeps"], histories["S"])
+        lines["I"].set_data(histories["sweeps"], histories["I"])
+        lines["R"].set_data(histories["sweeps"], histories["R"])
+
+        right_edge = max(10, sweep_count)
+        ax_pop.set_xlim(0, right_edge)
+
     fig.canvas.draw_idle()
     fig.canvas.flush_events()
     plt.pause(0.001)
@@ -133,7 +181,7 @@ if args.graphics==1:
         grid = np.random.choice(np.array([-1, 0, 1], dtype=np.int8), size=(L, L))
 
         #initialise figure for plotting
-        fig, ax, im = init_plot(grid, "SIRS")
+        fig, ax, im, _, _, _ = init_plot(grid, "SIRS", show_populations=False)
 
         for step in range(visualiserSteps):
 
@@ -141,7 +189,7 @@ if args.graphics==1:
             doSirsUpdate(L, grid, psi, pir, prs)
 
             #only update grid after a sweep
-            if step % sweep == 0 or step==visualiserSteps-1:
+            if (step + 1) % sweep == 0 or step==visualiserSteps-1:
 
                 #visually update the grid
                 update_plot(im, fig, grid)
@@ -153,7 +201,7 @@ elif args.graphics==2:
         grid = np.random.choice(np.array([-1, 0, 1], dtype=np.int8), size=(L, L))
 
         #initialise figure for plotting
-        fig, ax, im = init_plot(grid, "SIRS")
+        fig, ax, im, ax_pop, lines, histories = init_plot(grid, "SIRS", show_populations=True)
 
         for step in range(visualiserSteps):
 
@@ -161,7 +209,8 @@ elif args.graphics==2:
             doSirsUpdate(L, grid, psi, pir, prs)
 
             #only update grid after a sweep
-            if step % sweep == 0 or step==visualiserSteps-1:
+            if (step + 1) % sweep == 0 or step==visualiserSteps-1:
+                sweep_count = (step + 1) // sweep
 
                 #visually update the grid
-                update_plot(im, fig, grid)
+                update_plot(im, fig, grid, sweep_count=sweep_count, ax_pop=ax_pop, lines=lines, histories=histories)
