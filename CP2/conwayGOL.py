@@ -195,7 +195,15 @@ if args.graphics==1:
     
     #blinker (oscillator)
     elif args.random==False and args.startingCondition.lower()=='blinker':
-        pass
+        grid = np.zeros((L, L), dtype=np.int8)
+        
+        blinker = np.array([[0, 1, 0],
+                       [0, 1, 0],
+                       [0, 1, 0]], dtype=np.int8)
+        
+        start_y = L // 2 - 1
+        start_x = L // 2 - 1
+        grid[start_y:start_y+3, start_x:start_x+3] = blinker
 
     #initialise figure for plotting
     fig, ax, im = init_plot(grid, "Conway's Game of Life")
@@ -316,8 +324,6 @@ elif args.graphics==0:
         
         
         plt.show()
-    
-    
     
     else:
         #repeat simulation for the number of measurements that we want
