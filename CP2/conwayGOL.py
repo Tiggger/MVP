@@ -37,7 +37,7 @@ parser.add_argument('-p', '--pAlive', type=float, default=0.5,
 parser.add_argument('-g', '--graphics', type=int, default='1',
                     help='Graphics mode (visualisation), 0 for off, 1 for on')
 
-parser.add_argument('-d', '--debug', type=int, default='0',
+parser.add_argument('-d', '--debug', type=bool, default=False,
                     help='Debug mode (prints a lot of things to help), 0 for off, 1 for on. Default is off')
 
 args = parser.parse_args()
@@ -328,7 +328,8 @@ elif args.graphics==0:
     else:
         #repeat simulation for the number of measurements that we want
         for sim in range(nMeas):
-            print(sim)
+            if args.debug==1:
+                print(sim)
 
             #initialise random grid
             grid = np.random.choice(np.array([1, 0], dtype=np.int8), size=(L, L), p=[pAlive, 1-pAlive])
