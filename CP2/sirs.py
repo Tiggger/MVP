@@ -37,7 +37,7 @@ parser.add_argument('-p', '--pAlive', type=float, default=0.5,
 parser.add_argument('-g', '--graphics', type=int, default='1',
                     help='Graphics mode (visualisation), 0 for off, 1 for on')
 
-parser.add_argument('-d', '--debug', type=int, default='0',
+parser.add_argument('-d', '--debug', type=bool, default=False,
                     help='Debug mode (prints a lot of things to help), 0 for off, 1 for on. Default is off')
 
 parser.add_argument('-psi', '--psi', type=float, default=0.5,
@@ -157,6 +157,9 @@ def doSirsUpdate(L, grid, psi, pir, prs):
         if np.random.rand()<prs:
             grid[x,y]=-1
 
+#average infected calculation function
+
+
 #Arguments
 L=args.n
 sweep = L * L
@@ -166,9 +169,12 @@ psi=args.psi
 pir=args.pir
 prs=args.prs
 
+debug=args.debug
 
-
-
+#for phase space diagram maker
+res=25
+numMeas=1000 #low for testing
+avgInfectedResults=np.zeros([res, res])
 
 
 
@@ -194,6 +200,7 @@ if args.graphics==1:
                 #visually update the grid
                 update_plot(im, fig, grid)
 
+#graphics mode to plot 
 elif args.graphics==2:
     #initialise grid
     if args.random==1:
@@ -214,3 +221,57 @@ elif args.graphics==2:
 
                 #visually update the grid
                 update_plot(im, fig, grid, sweep_count=sweep_count, ax_pop=ax_pop, lines=lines, histories=histories)
+
+
+#measurement mode
+
+
+
+elif args.graphics==0:
+    if args.random==1:
+
+        #set linspaces for psi and prs
+        psiVals=np.linspace(0, 1, res)
+        prsVals=np.linspace(0, 1, res)
+
+        #looping through parameter set
+        for psi in range(res):
+            for prs in range(res):
+                
+                #do 1 simulation, but measure 1000 times
+
+                if debug:
+                    print(f'Doing sim with psi={psiVals[psi]} and prs={prsVals[prs]}')
+                
+                #initialise random grid
+                grid = np.random.choice(np.array([-1, 0, 1], dtype=np.int8), size=(L, L))
+
+                #initialise list to save results for this parameter set
+                infectedResults=[]
+
+                #warm up for 100 sweeps
+                for _ in range(100*sweep):
+                    doSirsUpdate(L, grid, psiVals[psi], 0.5, prsVals[prs]) #hard code pir as 0.5
+                
+                #measurements for 1000 sweeps
+                for _ in range(1000*sweep):
+                    #do update
+                    doSirsUpdate(L, grid, psiVals[psi], 0.5, prsVals[prs])
+
+                    #measure infected
+                    infectedResults.append(np.count_nonzero(grid==0))
+                
+                #take average of infected results
+                avgInfected=np.average(infectedResults)
+
+                #normalise by grid size
+                avgInfected/=(L*L)
+
+                # print([psi, prs])
+                avgInfectedResults[psi, prs]=avgInfected
+
+    
+    plt.imshow(avgInfectedResults)
+    plt.grid(False)
+    plt.colorbar()
+    plt.show()
